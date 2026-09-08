@@ -1,0 +1,29 @@
+{
+  "name": "crucigrama",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Crucigramas colaborativos en español para Discord (Activity + Bot)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev:api": "npm run dev --workspace apps/api",
+    "dev:activity": "npm run dev --workspace apps/activity",
+    "dev:bot": "npm run dev --workspace apps/bot",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
+    "docker:up": "docker compose -f docker/docker-compose.yml up -d",
+    "docker:down": "docker compose -f docker/docker-compose.yml down"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "prisma": "^5.18.0"
+  }
+}
