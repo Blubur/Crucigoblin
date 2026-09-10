@@ -13,11 +13,15 @@
     "socket.io": "^4.7.5",
     "@prisma/client": "^5.18.0",
     "ioredis": "^5.4.1",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "tsx": "^4.16.2",
     "typescript": "^5.5.4",
-    "@types/node": "^20.14.10"
+    "@types/node": "^20.14.10",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.6"
   }
 }

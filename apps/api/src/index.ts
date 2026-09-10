@@ -1,11 +1,14 @@
 import Fastify from "fastify";
 import "dotenv/config";
+import { authRoutes } from "./modules/auth/auth.routes.js";
 
 const app = Fastify({ logger: true });
 
 app.get("/health", async () => {
   return { status: "ok", service: "crucigrama-api" };
 });
+
+app.register(authRoutes);
 
 const port = Number(process.env.API_PORT ?? 3001);
 

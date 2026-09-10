@@ -7,52 +7,55 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Guild {
-  id         String    @id
-  name       String
-  timezone   String    @default("Europe/Madrid")
-  credits    Int       @default(0)
-  hintCost   Int       @default(2)
-  createdAt  DateTime  @default(now())
+model Room {
+  id             String    @id @default(cuid())
+  name           String
+  inviteCode     String    @unique // código corto para unirse, ej. "ABC123"
+  timezone       String    @default("Europe/Madrid")
+  credits        Int       @default(0)
+  hintCost       Int       @default(2)
+  createdAt      DateTime  @default(now())
 
-  members    GuildMember[]
-  creditLogs CreditLog[]
-  settings   GuildSettings?
+  members        RoomMember[]
+  creditLogs     CreditLog[]
+  settings       RoomSettings?
 }
 
 model User {
-  id          String   @id
-  username    String
-  avatarHash  String?
-  createdAt   DateTime @default(now())
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  username     String
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
 
-  memberships GuildMember[]
+  memberships  RoomMember[]
 }
 
-model GuildMember {
+model RoomMember {
   id       String   @id @default(cuid())
-  guild    Guild    @relation(fields: [guildId], references: [id])
-  guildId  String
+  room     Room     @relation(fields: [roomId], references: [id])
+  roomId   String
   user     User     @relation(fields: [userId], references: [id])
   userId   String
-  role     String   @default("member")
-  rank     String?
+  role     String   @default("member") // member | creator | admin
+  rank     String?  // rango social editable, ej. "Vengo por la Ñ"
   joinedAt DateTime @default(now())
 
-  @@unique([guildId, userId])
+  @@unique([roomId, userId])
 }
 
 model Crossword {
   id          String    @id @default(cuid())
   title       String
-  type        String
-  status      String    @default("draft")
+  type        String    // daily | weekly | other
+  status      String    @default("draft") // draft|review|approved|published|archived
   category    String
   difficulty  String
   language    String    @default("es-ES")
   imageUrl    String?
   authorId    String
-  guildId     String?
+  roomId      String?   // null si es plantilla global reutilizable
   publishAt   DateTime?
   archivedAt  DateTime?
   grid        Json
@@ -66,34 +69,34 @@ model Word {
   id          String    @id @default(cuid())
   crossword   Crossword @relation(fields: [crosswordId], references: [id])
   crosswordId String
-  answer      String
+  answer      String    // nunca se expone al frontend
   clue        String
-  direction   String
+  direction   String    // across | down
   row         Int
   col         Int
   number      Int
 }
 
 model CrosswordSession {
-  id            String    @id @default(cuid())
-  crossword     Crossword @relation(fields: [crosswordId], references: [id])
-  crosswordId   String
-  guildId       String
-  state         Json
-  completed     Boolean   @default(false)
-  completedAt   DateTime?
-  startedAt     DateTime  @default(now())
-  archivedAt    DateTime?
+  id          String    @id @default(cuid())
+  crossword   Crossword @relation(fields: [crosswordId], references: [id])
+  crosswordId String
+  roomId      String
+  state       Json
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  startedAt   DateTime  @default(now())
+  archivedAt  DateTime?
 
-  hintUsages    HintUsage[]
+  hintUsages  HintUsage[]
 }
 
 model CreditLog {
   id        String   @id @default(cuid())
-  guild     Guild    @relation(fields: [guildId], references: [id])
-  guildId   String
+  room      Room     @relation(fields: [roomId], references: [id])
+  roomId    String
   delta     Int
-  reason    String
+  reason    String   // hint | completion | admin_adjust
   userId    String?
   sessionId String?
   createdAt DateTime @default(now())
@@ -110,9 +113,9 @@ model HintUsage {
   createdAt DateTime         @default(now())
 }
 
-model GuildSettings {
-  guild               Guild   @relation(fields: [guildId], references: [id])
-  guildId             String  @id
+model RoomSettings {
+  room                Room    @relation(fields: [roomId], references: [id])
+  roomId              String  @id
   notifyDaily         Boolean @default(true)
   notifyWeekly        Boolean @default(true)
   notifyCompletion    Boolean @default(true)
