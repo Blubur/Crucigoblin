@@ -7,20 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Room {
-  id             String    @id @default(cuid())
-  name           String
-  inviteCode     String    @unique // código corto para unirse, ej. "ABC123"
-  timezone       String    @default("Europe/Madrid")
-  credits        Int       @default(0)
-  hintCost       Int       @default(2)
-  createdAt      DateTime  @default(now())
-
-  members        RoomMember[]
-  creditLogs     CreditLog[]
-  settings       RoomSettings?
-}
-
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -29,40 +15,25 @@ model User {
   avatarUrl    String?
   createdAt    DateTime @default(now())
 
-  memberships  RoomMember[]
-}
-
-model RoomMember {
-  id       String   @id @default(cuid())
-  room     Room     @relation(fields: [roomId], references: [id])
-  roomId   String
-  user     User     @relation(fields: [userId], references: [id])
-  userId   String
-  role     String   @default("member") // member | creator | admin
-  rank     String?  // rango social editable, ej. "Vengo por la Ñ"
-  joinedAt DateTime @default(now())
-
-  @@unique([roomId, userId])
+  hintRequests HintRequest[]
+  hintVotes    HintVote[]
 }
 
 model Crossword {
   id          String    @id @default(cuid())
+  date        DateTime  @unique @db.Date // un crucigrama por día, ej. 2026-09-10
   title       String
-  type        String    // daily | weekly | other
-  status      String    @default("draft") // draft|review|approved|published|archived
   category    String
   difficulty  String
   language    String    @default("es-ES")
   imageUrl    String?
   authorId    String
-  roomId      String?   // null si es plantilla global reutilizable
-  publishAt   DateTime?
-  archivedAt  DateTime?
+  status      String    @default("draft") // draft|published|archived
   grid        Json
   createdAt   DateTime  @default(now())
 
   words       Word[]
-  sessions    CrosswordSession[]
+  session     GlobalSession?
 }
 
 model Word {
@@ -77,49 +48,43 @@ model Word {
   number      Int
 }
 
-model CrosswordSession {
-  id          String    @id @default(cuid())
-  crossword   Crossword @relation(fields: [crosswordId], references: [id])
-  crosswordId String
-  roomId      String
-  state       Json
-  completed   Boolean   @default(false)
-  completedAt DateTime?
-  startedAt   DateTime  @default(now())
-  archivedAt  DateTime?
+// Una única sesión compartida por crucigrama del día (todos los conectados la ven)
+model GlobalSession {
+  id           String    @id @default(cuid())
+  crossword    Crossword @relation(fields: [crosswordId], references: [id])
+  crosswordId  String    @unique
+  state        Json      // celdas rellenas, quién rellenó cada una, etc.
+  hintsUsed    Int       @default(0) // máximo 2 por día
+  completed    Boolean   @default(false)
+  completedAt  DateTime?
+  startedAt    DateTime  @default(now())
 
-  hintUsages  HintUsage[]
+  hintRequests HintRequest[]
 }
 
-model CreditLog {
-  id        String   @id @default(cuid())
-  room      Room     @relation(fields: [roomId], references: [id])
-  roomId    String
-  delta     Int
-  reason    String   // hint | completion | admin_adjust
-  userId    String?
-  sessionId String?
-  createdAt DateTime @default(now())
+// Propuesta de usar una de las 2 pistas diarias; se resuelve por votación sí/no
+model HintRequest {
+  id            String        @id @default(cuid())
+  session       GlobalSession @relation(fields: [sessionId], references: [id])
+  sessionId     String
+  wordId        String        // palabra que se propone revelar
+  requestedBy   User          @relation(fields: [requestedById], references: [id])
+  requestedById String
+  status        String        @default("pending") // pending | approved | rejected
+  createdAt     DateTime      @default(now())
+  resolvedAt    DateTime?
+
+  votes         HintVote[]
 }
 
-model HintUsage {
-  id        String           @id @default(cuid())
-  session   CrosswordSession @relation(fields: [sessionId], references: [id])
-  sessionId String
-  wordId    String
-  userId    String
-  type      String
-  cost      Int
-  createdAt DateTime         @default(now())
-}
+model HintVote {
+  id            String      @id @default(cuid())
+  hintRequest   HintRequest @relation(fields: [hintRequestId], references: [id])
+  hintRequestId String
+  user          User        @relation(fields: [userId], references: [id])
+  userId        String
+  vote          Boolean     // true = sí, false = no
+  createdAt     DateTime    @default(now())
 
-model RoomSettings {
-  room                Room    @relation(fields: [roomId], references: [id])
-  roomId              String  @id
-  notifyDaily         Boolean @default(true)
-  notifyWeekly        Boolean @default(true)
-  notifyCompletion    Boolean @default(true)
-  notifyRewards       Boolean @default(true)
-  voteApprovalMode    String  @default("simple_majority")
-  allowFullRevealHint Boolean @default(false)
+  @@unique([hintRequestId, userId]) // un voto por usuario y propuesta
 }
